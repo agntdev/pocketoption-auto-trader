@@ -14,5 +14,21 @@
         ]
       }
     ]
+  },
+  {
+    "name": "stop button in main menu disables auto-trading",
+    "steps": [
+      {
+        "send": { "callback": "stop:trading" },
+        "expect": [
+          {
+            "method": "editMessageText",
+            "payload": {
+              "text": "Auto-trading has been stopped."
+            }
+          }
+        ]
+      }
+    ]
   }
 ]

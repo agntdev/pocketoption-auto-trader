@@ -57,5 +57,148 @@
         ]
       }
     ]
+  },
+  {
+    "name": "onboarding flow with real account type",
+    "strict": false,
+    "steps": [
+      {
+        "send": { "callback": "onboarding:start" },
+        "expect": [
+          { "method": "editMessageText", "payload": { "text": "Welcome to PocketOption Auto-Trader.\n\nI'll set up automated trading for your account. Tap the button below to begin." } }
+        ]
+      },
+      {
+        "send": { "callback": "onboarding:begin" },
+        "expect": [
+          { "method": "editMessageText", "payload": { "text": "Enter your PocketOption email address:" } }
+        ]
+      },
+      {
+        "send": { "text": "trader@example.com" },
+        "expect": [
+          { "method": "sendMessage", "payload": { "text": "Enter your PocketOption password:" } }
+        ]
+      },
+      {
+        "send": { "text": "secretpass" },
+        "expect": [
+          { "method": "sendMessage", "payload": { "text": "Select your account type:" } }
+        ]
+      },
+      {
+        "send": { "callback": "onboarding:account:real" },
+        "expect": [
+          { "method": "editMessageText", "payload": { "text": "Enter your trade amount in USD (e.g. 1, 5, 10):" } }
+        ]
+      },
+      {
+        "send": { "text": "10" },
+        "expect": [
+          { "method": "sendMessage", "payload": { "text": "Select your trade timeframe:" } }
+        ]
+      },
+      {
+        "send": { "callback": "onboarding:tf:5m" },
+        "expect": [
+          { "method": "editMessageText", "payload": { "text": "Logging in to PocketOption…" } }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "onboarding rejects invalid email",
+    "steps": [
+      {
+        "send": { "callback": "onboarding:start" },
+        "expect": [
+          { "method": "editMessageText", "payload": { "text": "Welcome to PocketOption Auto-Trader.\n\nI'll set up automated trading for your account. Tap the button below to begin." } }
+        ]
+      },
+      {
+        "send": { "callback": "onboarding:begin" },
+        "expect": [
+          { "method": "editMessageText", "payload": { "text": "Enter your PocketOption email address:" } }
+        ]
+      },
+      {
+        "send": { "text": "notanemail" },
+        "expect": [
+          { "method": "sendMessage", "payload": { "text": "That doesn't look like a valid email. Try again:" } }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "onboarding rejects empty password",
+    "strict": false,
+    "steps": [
+      {
+        "send": { "callback": "onboarding:start" },
+        "expect": [
+          { "method": "editMessageText", "payload": { "text": "Welcome to PocketOption Auto-Trader.\n\nI'll set up automated trading for your account. Tap the button below to begin." } }
+        ]
+      },
+      {
+        "send": { "callback": "onboarding:begin" },
+        "expect": [
+          { "method": "editMessageText", "payload": { "text": "Enter your PocketOption email address:" } }
+        ]
+      },
+      {
+        "send": { "text": "user@example.com" },
+        "expect": [
+          { "method": "sendMessage", "payload": { "text": "Enter your PocketOption password:" } }
+        ]
+      },
+      {
+        "send": { "text": "" },
+        "expect": [
+          { "method": "sendMessage", "payload": { "text": "Password can't be empty. Try again:" } }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "onboarding rejects non-numeric trade amount",
+    "strict": false,
+    "steps": [
+      {
+        "send": { "callback": "onboarding:start" },
+        "expect": [
+          { "method": "editMessageText", "payload": { "text": "Welcome to PocketOption Auto-Trader.\n\nI'll set up automated trading for your account. Tap the button below to begin." } }
+        ]
+      },
+      {
+        "send": { "callback": "onboarding:begin" },
+        "expect": [
+          { "method": "editMessageText", "payload": { "text": "Enter your PocketOption email address:" } }
+        ]
+      },
+      {
+        "send": { "text": "user@example.com" },
+        "expect": [
+          { "method": "sendMessage", "payload": { "text": "Enter your PocketOption password:" } }
+        ]
+      },
+      {
+        "send": { "text": "pass123" },
+        "expect": [
+          { "method": "sendMessage", "payload": { "text": "Select your account type:" } }
+        ]
+      },
+      {
+        "send": { "callback": "onboarding:account:demo" },
+        "expect": [
+          { "method": "editMessageText", "payload": { "text": "Enter your trade amount in USD (e.g. 1, 5, 10):" } }
+        ]
+      },
+      {
+        "send": { "text": "abc" },
+        "expect": [
+          { "method": "sendMessage", "payload": { "text": "Please enter a valid positive number (e.g. 1, 5, 10):" } }
+        ]
+      }
+    ]
   }
 ]
