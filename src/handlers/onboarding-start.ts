@@ -52,10 +52,10 @@ composer.callbackQuery("onboarding:start", async (ctx) => {
   const chatId = ctx.chat?.id;
   if (!chatId) return;
 
-  let userData = getUserData(userId);
+  let userData = await getUserData(userId);
   if (!userData) {
     userData = createDefaultUserData(userId, chatId);
-    saveUserData(userId, userData);
+    await saveUserData(userId, userData);
   }
 
   ctx.session.onboardingStep = "email";
@@ -87,12 +87,12 @@ composer.on("message:text", async (ctx, next) => {
       await ctx.reply("That doesn't look like a valid email. Try again:");
       return;
     }
-    let userData = getUserData(userId);
+    let userData = await getUserData(userId);
     if (!userData) {
       userData = createDefaultUserData(userId, ctx.chat?.id ?? 0);
     }
     userData.credentials.email = text;
-    saveUserData(userId, userData);
+    await saveUserData(userId, userData);
     ctx.session.email = text;
     ctx.session.onboardingStep = "password";
     await ctx.reply(PASSWORD_PROMPT);
@@ -104,12 +104,12 @@ composer.on("message:text", async (ctx, next) => {
       await ctx.reply("Password can't be empty. Try again:");
       return;
     }
-    let userData = getUserData(userId);
+    let userData = await getUserData(userId);
     if (!userData) {
       userData = createDefaultUserData(userId, ctx.chat?.id ?? 0);
     }
     userData.credentials.encryptedPassword = encrypt(text);
-    saveUserData(userId, userData);
+    await saveUserData(userId, userData);
     ctx.session.password = text;
     ctx.session.onboardingStep = "account_type";
     await ctx.reply(ACCOUNT_TYPE_PROMPT, { reply_markup: accountTypeKeyboard });
@@ -122,12 +122,12 @@ composer.on("message:text", async (ctx, next) => {
       await ctx.reply("Please enter a valid positive number (e.g. 1, 5, 10):");
       return;
     }
-    let userData = getUserData(userId);
+    let userData = await getUserData(userId);
     if (!userData) {
       userData = createDefaultUserData(userId, ctx.chat?.id ?? 0);
     }
     userData.settings.tradeAmount = amount;
-    saveUserData(userId, userData);
+    await saveUserData(userId, userData);
     ctx.session.tradeAmount = amount;
     ctx.session.onboardingStep = "timeframe";
     await ctx.reply(TIMEFRAME_PROMPT, { reply_markup: timeframeKeyboard });
@@ -139,12 +139,12 @@ composer.callbackQuery("onboarding:account:real", async (ctx) => {
   await ctx.answerCallbackQuery();
   const userId = ctx.from?.id;
   if (!userId) return;
-  let userData = getUserData(userId);
+  let userData = await getUserData(userId);
   if (!userData) {
     userData = createDefaultUserData(userId, ctx.chat?.id ?? 0);
   }
   userData.settings.accountType = "real";
-  saveUserData(userId, userData);
+  await saveUserData(userId, userData);
   ctx.session.accountType = "real";
   ctx.session.onboardingStep = "trade_amount";
   await ctx.editMessageText(TRADE_AMOUNT_PROMPT);
@@ -154,12 +154,12 @@ composer.callbackQuery("onboarding:account:demo", async (ctx) => {
   await ctx.answerCallbackQuery();
   const userId = ctx.from?.id;
   if (!userId) return;
-  let userData = getUserData(userId);
+  let userData = await getUserData(userId);
   if (!userData) {
     userData = createDefaultUserData(userId, ctx.chat?.id ?? 0);
   }
   userData.settings.accountType = "demo";
-  saveUserData(userId, userData);
+  await saveUserData(userId, userData);
   ctx.session.accountType = "demo";
   ctx.session.onboardingStep = "trade_amount";
   await ctx.editMessageText(TRADE_AMOUNT_PROMPT);
@@ -172,39 +172,57 @@ composer.callbackQuery(/^onboarding:tf:(.+)$/, async (ctx) => {
   const userId = ctx.from?.id;
   if (!userId) return;
 
-  let userData = getUserData(userId);
+  let userData = await getUserData(userId);
   if (!userData) {
     userData = createDefaultUserData(userId, ctx.chat?.id ?? 0);
   }
   userData.settings.timeframe = timeframe;
-  saveUserData(userId, userData);
+  await saveUserData(userId, userData);
   ctx.session.timeframe = timeframe;
   ctx.session.onboardingStep = "done";
 
   await ctx.editMessageText("Logging in to PocketOption…");
 
-  const result = await loginToPocketOption({
-    email: userData.credentials.email,
-    password: userData.credentials.encryptedPassword,
-    accountType: userData.settings.accountType,
-  });
+  // Use the plaintext password from session (not the encrypted version stored
+  // on disk) — the PocketOption API needs the actual password for auth.
+  const plaintextPassword = ctx.session.password ?? "";
 
-  if (result.success) {
-    userData.session.loginStatus = "logged_in";
-    userData.session.autoTradingEnabled = true;
-    saveUserData(userId, userData);
-    ctx.session.loggedIn = true;
-    ctx.session.autoTradingEnabled = true;
+  let loginSuccess = false;
+  try {
+    const result = await loginToPocketOption({
+      email: userData.credentials.email,
+      password: plaintextPassword,
+      accountType: userData.settings.accountType,
+    });
+
+    if (result.success) {
+      loginSuccess = true;
+      userData.session.loginStatus = "logged_in";
+      userData.session.autoTradingEnabled = true;
+      await saveUserData(userId, userData);
+      ctx.session.loggedIn = true;
+      ctx.session.autoTradingEnabled = true;
+      // Clear password from session — no longer needed.
+      ctx.session.password = undefined;
+    } else {
+      userData.session.loginStatus = "login_failed";
+      await saveUserData(userId, userData);
+      ctx.session.loggedIn = false;
+    }
+  } catch {
+    userData.session.loginStatus = "login_failed";
+    await saveUserData(userId, userData);
+    ctx.session.loggedIn = false;
+  }
+
+  if (loginSuccess) {
     await ctx.editMessageText(
       "✅ Login successful. Auto-trading is now enabled.",
       { reply_markup: backToMenu() },
     );
   } else {
-    userData.session.loginStatus = "login_failed";
-    saveUserData(userId, userData);
-    ctx.session.loggedIn = false;
     await ctx.editMessageText(
-      `Login failed: ${result.error ?? "Unknown error"}. Tap below to retry.`,
+      "Login failed — check your credentials and try again.",
       {
         reply_markup: inlineKeyboard([
           [inlineButton("Retry login", "onboarding:start")],

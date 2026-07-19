@@ -1,4 +1,5 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { createRequire } from "node:module";
 
 const ALGORITHM = "aes-256-cbc";
 const IV_LENGTH = 16;
@@ -63,14 +64,62 @@ export interface UserData {
   session: TradingSession;
 }
 
-const store = new Map<string, UserData>();
+// ---------------------------------------------------------------------------
+// Redis-backed persistent storage for durable domain data.
+// Falls back to in-memory Map when REDIS_URL is not set (test / dev).
+// ---------------------------------------------------------------------------
 
-export function getUserData(telegramUserId: number): UserData | undefined {
-  return store.get(String(telegramUserId));
+interface RedisLike {
+  get(key: string): Promise<string | null>;
+  set(key: string, value: string): Promise<unknown>;
+  del(key: string): Promise<unknown>;
 }
 
-export function saveUserData(telegramUserId: number, data: UserData): void {
-  store.set(String(telegramUserId), data);
+const PREFIX = "user:";
+
+let redisClient: RedisLike | null = null;
+
+function getRedis(): RedisLike | null {
+  if (redisClient) return redisClient;
+  const url = process.env.REDIS_URL;
+  if (!url) return null;
+  try {
+    const require = createRequire(import.meta.url);
+    const IORedis = require("ioredis");
+    const Redis = IORedis.default ?? IORedis.Redis ?? IORedis;
+    redisClient = new Redis(url, { maxRetriesPerRequest: null, lazyConnect: false }) as RedisLike;
+    return redisClient;
+  } catch {
+    return null;
+  }
+}
+
+// In-memory fallback (development / test / no Redis configured)
+const memStore = new Map<string, UserData>();
+
+export async function getUserData(telegramUserId: number): Promise<UserData | undefined> {
+  const key = PREFIX + String(telegramUserId);
+  const client = getRedis();
+  if (client) {
+    const raw = await client.get(key);
+    if (!raw) return undefined;
+    try {
+      return JSON.parse(raw) as UserData;
+    } catch {
+      return undefined;
+    }
+  }
+  return memStore.get(String(telegramUserId));
+}
+
+export async function saveUserData(telegramUserId: number, data: UserData): Promise<void> {
+  const key = PREFIX + String(telegramUserId);
+  const client = getRedis();
+  if (client) {
+    await client.set(key, JSON.stringify(data));
+  } else {
+    memStore.set(String(telegramUserId), data);
+  }
 }
 
 export function createDefaultUserData(telegramUserId: number, chatId: number): UserData {

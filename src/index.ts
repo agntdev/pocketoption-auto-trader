@@ -8,9 +8,10 @@ async function main() {
     process.exit(1);
   }
   const bot = await buildBot(token);
-  // Publish the "/" command list to Telegram (discoverability). A button-first
-  // bot exposes only /start + /help; everything else is reached via menu buttons.
-  await setDefaultCommands(bot);
+  await setDefaultCommands(bot, [
+    { command: "status", description: "View trading session stats" },
+    { command: "stop", description: "Pause auto-trading" },
+  ]);
   bot.start();
 }
 

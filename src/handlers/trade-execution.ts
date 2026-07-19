@@ -10,21 +10,22 @@ import {
   fetchSignals,
   validateSignalTimeframe,
   timeframeToSeconds,
-  type TradeSignal,
 } from "../signal-provider.js";
 
 const composer = new Composer<Ctx>();
+
+const backToMenu = inlineKeyboard([[inlineButton("⬅️ Back to menu", "menu:main")]]);
 
 composer.callbackQuery("trade:signals", async (ctx) => {
   await ctx.answerCallbackQuery();
   const userId = ctx.from?.id;
   if (!userId) return;
 
-  const userData = getUserData(userId);
+  const userData = await getUserData(userId);
   if (!userData || userData.session.loginStatus !== "logged_in") {
     await ctx.editMessageText(
       "You need to log in first. Tap Get Started to set up your account.",
-      { reply_markup: inlineKeyboard([[inlineButton("⬅️ Back to menu", "menu:main")]]) },
+      { reply_markup: backToMenu },
     );
     return;
   }
@@ -32,18 +33,28 @@ composer.callbackQuery("trade:signals", async (ctx) => {
   if (!userData.session.autoTradingEnabled) {
     await ctx.editMessageText(
       "Auto-trading is paused. Resume it from the main menu.",
-      { reply_markup: inlineKeyboard([[inlineButton("⬅️ Back to menu", "menu:main")]]) },
+      { reply_markup: backToMenu },
     );
     return;
   }
 
   await ctx.editMessageText("Checking for new signals…");
 
-  const result = await fetchSignals();
+  let result;
+  try {
+    result = await fetchSignals();
+  } catch {
+    await ctx.editMessageText(
+      "Couldn't reach the signal provider. Try again in a moment.",
+      { reply_markup: backToMenu },
+    );
+    return;
+  }
+
   if (!result.success || !result.signals || result.signals.length === 0) {
     await ctx.editMessageText(
       `No signals available: ${result.error ?? "No signals found"}.`,
-      { reply_markup: inlineKeyboard([[inlineButton("⬅️ Back to menu", "menu:main")]]) },
+      { reply_markup: backToMenu },
     );
     return;
   }
@@ -55,7 +66,7 @@ composer.callbackQuery("trade:signals", async (ctx) => {
   if (validSignals.length === 0) {
     await ctx.editMessageText(
       "No signals match your current timeframe.",
-      { reply_markup: inlineKeyboard([[inlineButton("⬅️ Back to menu", "menu:main")]]) },
+      { reply_markup: backToMenu },
     );
     return;
   }
@@ -73,7 +84,12 @@ composer.callbackQuery("trade:signals", async (ctx) => {
       instrument: signal.instrument,
     };
 
-    const tradeResult = await executeTrade(tradeReq);
+    let tradeResult;
+    try {
+      tradeResult = await executeTrade(tradeReq);
+    } catch {
+      tradeResult = { success: false, error: "Network error" };
+    }
 
     userData.session.tradesExecuted = (userData.session.tradesExecuted ?? 0) + 1;
     if (tradeResult.success) {
@@ -84,7 +100,7 @@ composer.callbackQuery("trade:signals", async (ctx) => {
     }
   }
 
-  saveUserData(userId, userData);
+  await saveUserData(userId, userData);
   ctx.session.tradesExecuted = userData.session.tradesExecuted;
   ctx.session.winCount = userData.session.winCount;
   ctx.session.lossCount = userData.session.lossCount;
@@ -96,7 +112,7 @@ composer.callbackQuery("trade:signals", async (ctx) => {
   ].join("\n");
 
   await ctx.editMessageText(summary, {
-    reply_markup: inlineKeyboard([[inlineButton("⬅️ Back to menu", "menu:main")]]),
+    reply_markup: backToMenu,
   });
 });
 
