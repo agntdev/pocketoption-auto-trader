@@ -1,0 +1,20 @@
+[
+  {
+    "name": "/status",
+    "steps": [
+      {
+        "expect": [
+          {
+            "method": "sendMessage",
+            "payload": {
+              "text": "Displays current trading session statistics"
+            }
+          }
+        ],
+        "send": {
+          "text": "/status"
+        }
+      }
+    ]
+  }
+]
