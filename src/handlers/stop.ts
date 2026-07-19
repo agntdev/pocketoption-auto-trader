@@ -1,15 +1,26 @@
 import { Composer } from "grammy";
+import type { Ctx } from "../bot.js";
+import { inlineButton, inlineKeyboard } from "../toolkit/index.js";
+import { getUserData, saveUserData } from "../storage.js";
 
-// SCAFFOLD — generated from the bot blueprint BEFORE the agent runs.
-// Keep a LIVE registration (.command / .callbackQuery / …) so this feature is
-// never an empty stub. Replace the reply body with real logic + copy; if you
-// change the user-facing text, update tests/specs to match EXACTLY.
-// Do NOT rewrite src/bot.ts — buildBot() already auto-loads this module.
-
-const composer = new Composer();
+const composer = new Composer<Ctx>();
 
 composer.command("stop", async (ctx) => {
-  await ctx.reply("Disables auto-trading for current session");
+  const userId = ctx.from?.id;
+  if (!userId) return;
+
+  const userData = getUserData(userId);
+  if (userData) {
+    userData.session.autoTradingEnabled = false;
+    saveUserData(userId, userData);
+  }
+  ctx.session.autoTradingEnabled = false;
+
+  await ctx.reply("Auto-trading has been stopped.", {
+    reply_markup: inlineKeyboard([
+      [inlineButton("⬅️ Back to menu", "menu:main")],
+    ]),
+  });
 });
 
 export default composer;
