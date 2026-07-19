@@ -1,19 +1,17 @@
 [
   {
-    "name": "/stop",
+    "name": "/stop disables auto-trading",
     "steps": [
       {
+        "send": { "text": "/stop" },
         "expect": [
           {
             "method": "sendMessage",
             "payload": {
-              "text": "Disables auto-trading for current session"
+              "text": "Auto-trading has been stopped."
             }
           }
-        ],
-        "send": {
-          "text": "/stop"
-        }
+        ]
       }
     ]
   }

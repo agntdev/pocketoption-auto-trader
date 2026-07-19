@@ -1,19 +1,17 @@
 [
   {
-    "name": "/status",
+    "name": "/status shows trading session statistics",
     "steps": [
       {
+        "send": { "text": "/status" },
         "expect": [
           {
             "method": "sendMessage",
             "payload": {
-              "text": "Displays current trading session statistics"
+              "text": "Login: Not connected\nTrading: Paused\nTrades: 0\nWins: 0 | Losses: 0\nP&L: +0.00 USD"
             }
           }
-        ],
-        "send": {
-          "text": "/status"
-        }
+        ]
       }
     ]
   }

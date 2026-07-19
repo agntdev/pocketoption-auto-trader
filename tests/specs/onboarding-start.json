@@ -1,19 +1,60 @@
 [
   {
-    "name": "Get Started 🚀",
+    "name": "Get Started button initiates onboarding",
     "steps": [
       {
+        "send": { "callback": "onboarding:start" },
         "expect": [
-          {
-            "method": "sendMessage",
-            "payload": {
-              "text": "Initiates credential collection flow"
-            }
-          }
-        ],
-        "send": {
-          "callback": "onboarding:start"
-        }
+          { "method": "editMessageText", "payload": { "text": "Welcome to PocketOption Auto-Trader.\n\nI'll set up automated trading for your account. Tap the button below to begin." } }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "onboarding flow collects email, password, account type, amount, timeframe",
+    "strict": false,
+    "steps": [
+      {
+        "send": { "callback": "onboarding:start" },
+        "expect": [
+          { "method": "editMessageText", "payload": { "text": "Welcome to PocketOption Auto-Trader.\n\nI'll set up automated trading for your account. Tap the button below to begin." } }
+        ]
+      },
+      {
+        "send": { "callback": "onboarding:begin" },
+        "expect": [
+          { "method": "editMessageText", "payload": { "text": "Enter your PocketOption email address:" } }
+        ]
+      },
+      {
+        "send": { "text": "user@example.com" },
+        "expect": [
+          { "method": "sendMessage", "payload": { "text": "Enter your PocketOption password:" } }
+        ]
+      },
+      {
+        "send": { "text": "mypassword123" },
+        "expect": [
+          { "method": "sendMessage", "payload": { "text": "Select your account type:" } }
+        ]
+      },
+      {
+        "send": { "callback": "onboarding:account:demo" },
+        "expect": [
+          { "method": "editMessageText", "payload": { "text": "Enter your trade amount in USD (e.g. 1, 5, 10):" } }
+        ]
+      },
+      {
+        "send": { "text": "5" },
+        "expect": [
+          { "method": "sendMessage", "payload": { "text": "Select your trade timeframe:" } }
+        ]
+      },
+      {
+        "send": { "callback": "onboarding:tf:1m" },
+        "expect": [
+          { "method": "editMessageText", "payload": { "text": "Logging in to PocketOption…" } }
+        ]
       }
     ]
   }
