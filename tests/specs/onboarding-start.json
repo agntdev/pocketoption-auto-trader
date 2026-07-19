@@ -1,0 +1,20 @@
+[
+  {
+    "name": "Get Started 🚀",
+    "steps": [
+      {
+        "expect": [
+          {
+            "method": "sendMessage",
+            "payload": {
+              "text": "Initiates credential collection flow"
+            }
+          }
+        ],
+        "send": {
+          "callback": "onboarding:start"
+        }
+      }
+    ]
+  }
+]
